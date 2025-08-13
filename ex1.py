@@ -1,89 +1,109 @@
 import streamlit as st
-import pandas as pd
-from datetime import date, timedelta
-import math
+import cv2
+import time
+import numpy as np
+import random
 
-st.set_page_config(page_title="MBTI별 공부 계획표", page_icon="📚", layout="wide")
-st.title("📚 MBTI 맞춤형 공부 계획표")
+st.set_page_config(page_title="뽀모도로 집중도 측정", page_icon="⏳", layout="wide")
+st.title("⏳ 뽀모도로 공부 타이머 + 집중도 측정 + 동기 부여")
 
-st.write("MBTI 성향에 따라 하루 공부량을 다르게 분배합니다.")
+# 뽀모도로 설정
+study_minutes = st.number_input("공부 시간(분)", min_value=1, value=25)
+break_minutes = st.number_input("휴식 시간(분)", min_value=1, value=5)
 
-# MBTI 입력
-mbti = st.text_input("당신의 MBTI를 입력하세요 (예: INFP, ESTJ)").upper()
+# 동기 부여 문구 리스트
+motivations = [
+    "🚀 지금 이 순간이 당신의 미래를 만든다!",
+    "🔥 포기하지 않는 한, 실패는 없다!",
+    "🌱 작은 습관이 큰 변화를 만든다.",
+    "💪 오늘의 땀방울이 내일의 성취다.",
+    "🎯 목표를 향해 한 걸음 더!",
+    "📚 꾸준함이 최고의 무기다.",
+    "🏆 노력은 배신하지 않는다.",
+    "🌟 당신은 생각보다 훨씬 강하다.",
+    "⏳ 완벽한 순간을 기다리지 말고 지금 시작하라.",
+    "⚡ 기회는 준비된 자에게 온다.",
+    "📖 오늘 배우는 것이 내일의 무기가 된다.",
+    "🚴‍♂️ 천천히 가도 멈추지 않으면 된다.",
+    "🧠 집중은 최고의 생산성 도구다.",
+    "🌞 하루의 첫 1시간이 하루 전체를 만든다.",
+    "🛠️ 꾸준함은 재능을 이긴다.",
+    "🌊 파도는 멈추지 않는다. 너도 멈추지 마라.",
+    "🔥 지금의 선택이 미래를 만든다.",
+    "🎵 작은 진전도 진전이다.",
+    "🌻 오늘 심은 씨앗은 내일 꽃이 된다.",
+    "🏃‍♀️ 시작이 반이다.",
+    "🧗 도전 없이는 성장도 없다.",
+    "📅 오늘을 최선을 다해 살아라.",
+    "🕰️ 시간이 부족한 게 아니라, 우선순위가 문제다.",
+    "🪴 하루하루가 쌓여 인생이 된다.",
+    "⚙️ 실패는 시도했다는 증거다.",
+    "🌟 불가능은 단지 시간이 더 필요한 것뿐이다.",
+    "💡 배움은 평생의 자산이다.",
+    "🚪 문이 닫히면 다른 문을 찾아라.",
+    "🌍 작은 변화가 세상을 바꾼다.",
+    "💖 자신을 믿는 것이 시작이다."
+]
 
-# MBTI 가중치 (마지막 글자와 첫 글자 위주로 반영)
-def get_distribution_factor(mbti_type, days):
-    if not mbti_type or len(mbti_type) != 4:
-        return [1/days] * days  # 균등 분배 (기본값)
-    
-    factor = []
-    if mbti_type[3] == "J":  # 계획형
-        factor = [1/days] * days
-    elif mbti_type[3] == "P":  # 즉흥형
-        factor = [0.05 * (i+1) for i in range(days)]
-    else:
-        factor = [1/days] * days
 
-    # E/I로 초반/후반 가중치 조절
-    if mbti_type[0] == "E":  # 외향형 → 초반 집중
-        factor = [f * (1.2 if i < days/2 else 0.8) for i, f in enumerate(factor)]
-    elif mbti_type[0] == "I":  # 내향형 → 후반 집중
-        factor = [f * (0.8 if i < days/2 else 1.2) for i, f in enumerate(factor)]
+if "focus_score" not in st.session_state:
+    st.session_state.focus_score = 0
+if "frames_checked" not in st.session_state:
+    st.session_state.frames_checked = 0
 
-    total = sum(factor)
-    return [f / total for f in factor]  # 합계 1로 정규화
+start_button = st.button("타이머 시작")
 
-# 과목 입력
-num_subjects = st.number_input("과목 개수", min_value=1, max_value=10, value=2)
+if start_button:
+    st.write("📚 공부 시작!")
+    end_time = time.time() + (study_minutes * 60)
+    last_motivation_time = time.time()
+    current_motivation = random.choice(motivations)
 
-subjects = []
-for i in range(num_subjects):
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        name = st.text_input(f"{i+1}번 과목 이름", key=f"name_{i}")
-    with col2:
-        exam_day = st.date_input(f"{i+1}번 과목 시험 날짜", key=f"date_{i}")
-    with col3:
-        total_amount = st.number_input(f"{i+1}번 과목 총 공부 분량 (페이지/챕터 수)", min_value=1, key=f"amount_{i}")
-    if name and exam_day and total_amount:
-        subjects.append({"subject": name, "exam_date": exam_day, "total_amount": total_amount})
+    camera = cv2.VideoCapture(0)
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
 
-# 계획 생성
-if st.button("계획 만들기"):
-    if not subjects:
-        st.error("과목명, 시험 날짜, 공부 분량을 모두 입력하세요.")
-    else:
-        today = date.today()
-        plan_data = []
+    placeholder_timer = st.empty()
+    placeholder_focus = st.empty()
+    placeholder_motivation = st.empty()
 
-        for subj in subjects:
-            days_left = (subj["exam_date"] - today).days
-            if days_left <= 0:
-                plan_data.append([subj["subject"], "시험일이 지났거나 오늘입니다!", ""])
-            else:
-                dist = get_distribution_factor(mbti, days_left)
-                done = 0
-                for d in range(days_left):
-                    day_plan = today + timedelta(days=d)
-                    amount = math.ceil(subj["total_amount"] * dist[d])
-                    if amount > 0:
-                        start = done + 1
-                        end = min(done + amount, subj["total_amount"])
-                        done = end
-                        plan_text = f"{start}~{end} 페이지 공부"
-                    else:
-                        plan_text = "복습 또는 휴식"
-                    plan_data.append([subj["subject"], day_plan, plan_text])
+    while time.time() < end_time:
+        ret, frame = camera.read()
+        if not ret:
+            st.error("카메라를 불러올 수 없습니다.")
+            break
 
-        df = pd.DataFrame(plan_data, columns=["과목", "날짜", "계획"])
-        st.subheader("📅 MBTI 맞춤 공부 계획표")
-        st.dataframe(df)
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
 
-        # CSV 다운로드
-        csv = df.to_csv(index=False).encode("utf-8-sig")
-        st.download_button(
-            label="📥 계획표 다운로드 (CSV)",
-            data=csv,
-            file_name="mbti_study_plan.csv",
-            mime="text/csv"
-        )
+        st.session_state.frames_checked += 1
+        if len(faces) > 0:
+            st.session_state.focus_score += 1
+
+        # 타이머 표시
+        remaining_time = int(end_time - time.time())
+        minutes = remaining_time // 60
+        seconds = remaining_time % 60
+        placeholder_timer.subheader(f"남은 공부 시간: {minutes:02}:{seconds:02}")
+
+        # 집중도 표시
+        focus_percent = (st.session_state.focus_score / st.session_state.frames_checked) * 100
+        placeholder_focus.progress(int(focus_percent))
+        placeholder_focus.write(f"집중도: {focus_percent:.1f}%")
+
+        # 10분마다 동기부여 문구 변경
+        if time.time() - last_motivation_time >= 600:  # 600초 = 10분
+            current_motivation = random.choice(motivations)
+            last_motivation_time = time.time()
+
+        placeholder_motivation.markdown(f"### 💡 {current_motivation}")
+
+        time.sleep(1)
+
+    camera.release()
+    st.success("⏰ 공부 세션 종료! 이제 휴식 시간입니다.")
+    st.write(f"최종 집중도: {(st.session_state.focus_score / st.session_state.frames_checked) * 100:.1f}%")
+
+    # 휴식 타이머
+    st.write(f"휴식 {break_minutes}분 시작!")
+    time.sleep(break_minutes * 60)
+    st.success("휴식 종료! 다음 공부 세션 시작 가능!")
