@@ -1,2 +1,2 @@
 import streamlit as st
-st.tilte('뿡')
+st.title('뿡')
