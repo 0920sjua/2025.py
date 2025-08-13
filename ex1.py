@@ -3,13 +3,38 @@ import pandas as pd
 from datetime import date, timedelta
 import math
 
-st.set_page_config(page_title="시험 공부 계획표", page_icon="📚", layout="wide")
-st.title("📚 시험 공부량 자동 계획표")
+st.set_page_config(page_title="MBTI별 공부 계획표", page_icon="📚", layout="wide")
+st.title("📚 MBTI 맞춤형 공부 계획표")
 
-st.write("시험 날짜와 총 공부 분량을 입력하면 하루 공부량을 자동 계산합니다.")
+st.write("MBTI 성향에 따라 하루 공부량을 다르게 분배합니다.")
+
+# MBTI 입력
+mbti = st.text_input("당신의 MBTI를 입력하세요 (예: INFP, ESTJ)").upper()
+
+# MBTI 가중치 (마지막 글자와 첫 글자 위주로 반영)
+def get_distribution_factor(mbti_type, days):
+    if not mbti_type or len(mbti_type) != 4:
+        return [1/days] * days  # 균등 분배 (기본값)
+    
+    factor = []
+    if mbti_type[3] == "J":  # 계획형
+        factor = [1/days] * days
+    elif mbti_type[3] == "P":  # 즉흥형
+        factor = [0.05 * (i+1) for i in range(days)]
+    else:
+        factor = [1/days] * days
+
+    # E/I로 초반/후반 가중치 조절
+    if mbti_type[0] == "E":  # 외향형 → 초반 집중
+        factor = [f * (1.2 if i < days/2 else 0.8) for i, f in enumerate(factor)]
+    elif mbti_type[0] == "I":  # 내향형 → 후반 집중
+        factor = [f * (0.8 if i < days/2 else 1.2) for i, f in enumerate(factor)]
+
+    total = sum(factor)
+    return [f / total for f in factor]  # 합계 1로 정규화
 
 # 과목 입력
-num_subjects = st.number_input("과목 개수", min_value=1, max_value=10, value=3)
+num_subjects = st.number_input("과목 개수", min_value=1, max_value=10, value=2)
 
 subjects = []
 for i in range(num_subjects):
@@ -36,16 +61,22 @@ if st.button("계획 만들기"):
             if days_left <= 0:
                 plan_data.append([subj["subject"], "시험일이 지났거나 오늘입니다!", ""])
             else:
-                daily_amount = math.ceil(subj["total_amount"] / days_left)
+                dist = get_distribution_factor(mbti, days_left)
+                done = 0
                 for d in range(days_left):
                     day_plan = today + timedelta(days=d)
-                    start = d * daily_amount + 1
-                    end = min((d + 1) * daily_amount, subj["total_amount"])
-                    plan_text = f"{start}~{end} 페이지 공부"
+                    amount = math.ceil(subj["total_amount"] * dist[d])
+                    if amount > 0:
+                        start = done + 1
+                        end = min(done + amount, subj["total_amount"])
+                        done = end
+                        plan_text = f"{start}~{end} 페이지 공부"
+                    else:
+                        plan_text = "복습 또는 휴식"
                     plan_data.append([subj["subject"], day_plan, plan_text])
 
         df = pd.DataFrame(plan_data, columns=["과목", "날짜", "계획"])
-        st.subheader("📅 하루 공부량 계획표")
+        st.subheader("📅 MBTI 맞춤 공부 계획표")
         st.dataframe(df)
 
         # CSV 다운로드
@@ -53,6 +84,6 @@ if st.button("계획 만들기"):
         st.download_button(
             label="📥 계획표 다운로드 (CSV)",
             data=csv,
-            file_name="study_plan.csv",
+            file_name="mbti_study_plan.csv",
             mime="text/csv"
         )
