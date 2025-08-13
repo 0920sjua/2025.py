@@ -1,10 +1,20 @@
-pip install streamlit torch torchvision pillow opencv-python
+# ---------- 라이브러리 자동 설치 ----------
+import subprocess
+import sys
+
+packages = ["streamlit", "torch", "torchvision", "pillow", "opencv-python"]
+for pkg in packages:
+    try:
+        __import__(pkg if pkg != "opencv-python" else "cv2")
+    except ImportError:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
+
+# ---------- 실제 앱 코드 ----------
 import io
 import numpy as np
 import streamlit as st
 from PIL import Image
 import torch
-import torchvision.transforms as T
 from torchvision import models
 import cv2
 
@@ -113,5 +123,3 @@ st.caption(
     "안내: 이 앱은 사진 속 인물을 누구인지 **식별하지 않습니다**. "
     "동물 분류는 ImageNet 기반으로 추정 결과를 제공하며, 사진·각도·해상도에 따라 정확도가 달라질 수 있습니다."
 )
-streamlit run app.py
-
