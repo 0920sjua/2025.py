@@ -2,6 +2,7 @@ import streamlit as st
 import time
 import datetime
 import pandas as pd
+import random   # ⬅️ 여기로 옮김 (중복 제거)
 
 # -------------------------------
 # 세션 상태 초기화
@@ -109,7 +110,6 @@ st.metric("⏱️ 현재 공부 시간", f"{hours:02}:{minutes:02}:{seconds:02}"
 
 # 동기부여 문구 (10분마다 변경)
 if elapsed_time // 600 > st.session_state.last_motivation_time:
-    import random
     st.session_state.last_motivation = random.choice(motivations)
     st.session_state.last_motivation_time = elapsed_time // 600
 
