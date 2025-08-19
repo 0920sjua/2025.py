@@ -2,7 +2,7 @@ import streamlit as st
 import time
 import datetime
 import pandas as pd
-import random   # ⬅️ 여기로 옮김 (중복 제거)
+import random   # ⬅️ 여기에서 import
 
 # -------------------------------
 # 세션 상태 초기화
@@ -85,15 +85,17 @@ def reset_timer():
 # -------------------------------
 # 앱 화면 구성
 # -------------------------------
-st.title("⏰ 공부 타이머 & 기록 앱")
+
+# 👉 앱 제목을 "동기부여 문구"로만 표시
+st.title("💡 동기부여 문구")
 
 # D-day 설정
 exam_date = st.date_input("📅 시험 날짜를 선택하세요")
 days_left = (exam_date - datetime.date.today()).days
 if days_left >= 0:
-    st.subheader(f"🎯 시험까지 D-{days_left}")
+    st.write(f"🎯 시험까지 D-{days_left}")
 else:
-    st.subheader("시험이 이미 지났습니다!")
+    st.write("시험이 이미 지났습니다!")
 
 # 과목 선택
 subject = st.selectbox("📚 과목 선택", ["국어", "영어", "수학", "생활과 윤리", "정치와 법", "한국지리"])
@@ -113,7 +115,7 @@ if elapsed_time // 600 > st.session_state.last_motivation_time:
     st.session_state.last_motivation = random.choice(motivations)
     st.session_state.last_motivation_time = elapsed_time // 600
 
-st.markdown(f"### 💡 {st.session_state.last_motivation if st.session_state.last_motivation else random.choice(motivations)}")
+st.markdown(f"## {st.session_state.last_motivation if st.session_state.last_motivation else random.choice(motivations)}")
 
 # 버튼
 col1, col2, col3 = st.columns(3)
@@ -128,18 +130,13 @@ with col3:
         reset_timer()
 
 # -------------------------------
-# 공부 기록 (과목별 + 일별)
+# 공부 기록 (캘린더 느낌으로)
 # -------------------------------
-st.markdown("## 🗓 공부 기록 (과목별, 일별)")
 if st.session_state.logs:
     df = pd.DataFrame(st.session_state.logs)
 
-    # "순공부시간(h)" 없으면 새로 계산해서 추가
     if "순공부시간(초)" in df.columns and "순공부시간(h)" not in df.columns:
         df["순공부시간(h)"] = (df["순공부시간(초)"] / 3600).round(2)
 
-    # 표시할 컬럼들 안전하게 선택
     show_cols = [c for c in ["날짜", "과목", "순공부시간(h)"] if c in df.columns]
     st.dataframe(df[show_cols], use_container_width=True)
-else:
-    st.info("아직 공부 기록이 없습니다.")
