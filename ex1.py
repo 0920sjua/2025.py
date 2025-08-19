@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import datetime
-import time
 import random
 
 # -------------------------------
@@ -57,30 +56,26 @@ motivations = [
 ]
 
 # -------------------------------
-# 타이머 표시 및 동기부여 문구
+# 동기부여 문구 (10분마다 변경)
 # -------------------------------
-st.markdown("## ⏳ 공부 타이머")
-
-# 동기부여 문구 10분마다 갱신
 now = datetime.datetime.now()
 if (now - st.session_state.last_motivation_time).seconds >= 600:
     st.session_state.last_motivation = random.choice(motivations)
     st.session_state.last_motivation_time = now
-
 if st.session_state.last_motivation is None:
     st.session_state.last_motivation = random.choice(motivations)
 
-st.markdown(f"### 💡 {st.session_state.last_motivation}")
+st.markdown(f"## 💡 {st.session_state.last_motivation}")
 
 # -------------------------------
 # 과목 선택
 # -------------------------------
-subject = st.selectbox("📚 오늘 공부할 과목을 선택하세요", ["국어", "영어", "수학", "생활과 윤리", "정치와 법", "한국지리"])
+subject = st.selectbox("📚 과목을 선택하세요", ["국어", "영어", "수학", "생활과 윤리", "정치와 법", "한국지리"])
 
 # -------------------------------
 # 타이머 버튼
 # -------------------------------
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 
 with col1:
     if st.button("▶️ 시작", use_container_width=True):
@@ -93,14 +88,16 @@ with col2:
         if st.session_state.running:
             st.session_state.elapsed += (datetime.datetime.now() - st.session_state.start_time).seconds
             st.session_state.running = False
-            # 공부 기록 저장
-            today = datetime.date.today().strftime("%Y-%m-%d")
-            total_hours = round(st.session_state.elapsed / 3600, 2)
-            st.session_state.logs.append({"날짜": today, "과목": subject, "순공부시간(h)": total_hours})
-            st.success(f"✅ {today} {subject} {total_hours}시간 기록 저장!")
+
+with col3:
+    if st.button("📝 기록", use_container_width=True):
+        today = datetime.date.today().strftime("%Y-%m-%d")
+        total_hours = round(st.session_state.elapsed / 3600, 2)
+        st.session_state.logs.append({"날짜": today, "과목": subject, "순공부시간(h)": total_hours})
+        st.success(f"✅ {today} {subject} {total_hours}시간 기록 저장!")
 
 # -------------------------------
-# 실시간 타이머 업데이트
+# 실시간 타이머 표시
 # -------------------------------
 if st.session_state.running:
     elapsed = st.session_state.elapsed + (datetime.datetime.now() - st.session_state.start_time).seconds
@@ -122,7 +119,7 @@ if st.session_state.logs:
 # D-Day 설정
 # -------------------------------
 st.markdown("---")
-exam_date = st.date_input("📅 시험 날짜를 선택하세요", datetime.date(2025, 11, 13))
+exam_date = st.date_input("📅 시험 날짜", datetime.date(2025, 11, 13))
 d_day = (exam_date - datetime.date.today()).days
 if d_day > 0:
     st.markdown(f"### 🚀 D-{d_day}")
@@ -130,10 +127,3 @@ elif d_day == 0:
     st.markdown("### 🚀 오늘이 시험일입니다! 파이팅!!")
 else:
     st.markdown(f"### 🚀 시험이 끝난 지 {abs(d_day)}일 지났습니다.")
-    
-# -------------------------------
-# 자동 새로고침 (실시간 타이머처럼 동작)
-# -------------------------------
-if st.session_state.running:
-    time.sleep(1)
-    st.experimental_rerun()
