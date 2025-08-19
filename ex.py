@@ -1,18 +1,16 @@
 import streamlit as st
-import cv2
+import pandas as pd
 import time
-import numpy as np
 import random
+from datetime import datetime, date
+from streamlit_autorefresh import st_autorefresh
 
-st.set_page_config(page_title="뽀모도로 집중도 측정", page_icon="⏳", layout="wide")
-st.title("⏳ 뽀모도로 공부 타이머 + 집중도 측정 + 동기 부여")
+st.set_page_config(page_title="공부 타이머 & 동기부여", page_icon="📚", layout="centered")
 
-# 뽀모도로 설정
-study_minutes = st.number_input("공부 시간(분)", min_value=1, value=25)
-break_minutes = st.number_input("휴식 시간(분)", min_value=1, value=5)
-
-# 동기 부여 문구 리스트
-motivations = [
+# -----------------------------
+# 동기부여 메시지 (30개)
+# -----------------------------
+motivation_messages = [
     "🚀 지금 이 순간이 당신의 미래를 만든다!",
     "🔥 포기하지 않는 한, 실패는 없다!",
     "🌱 작은 습관이 큰 변화를 만든다.",
@@ -45,66 +43,104 @@ motivations = [
     "💖 자신을 믿는 것이 시작이다."
 ]
 
+# -----------------------------
+# 세션 상태 초기화
+# -----------------------------
+if "start_time" not in st.session_state:
+    st.session_state.start_time = None
+if "elapsed_seconds" not in st.session_state:
+    st.session_state.elapsed_seconds = 0
+if "running" not in st.session_state:
+    st.session_state.running = False
+if "records" not in st.session_state:
+    st.session_state.records = []
+if "current_message" not in st.session_state:
+    st.session_state.current_message = random.choice(motivation_messages)
+if "d_day" not in st.session_state:
+    st.session_state.d_day = None
 
-if "focus_score" not in st.session_state:
-    st.session_state.focus_score = 0
-if "frames_checked" not in st.session_state:
-    st.session_state.frames_checked = 0
+# -----------------------------
+# D-Day 선택
+# -----------------------------
+st.subheader("📅 시험 날짜 선택 (D-Day)")
+exam_date = st.date_input("시험일을 선택하세요", value=date.today())
+st.session_state.d_day = exam_date
 
-start_button = st.button("타이머 시작")
+# D-Day 계산
+today = date.today()
+days_left = (exam_date - today).days
+if days_left > 0:
+    st.markdown(f"<h3 style='text-align:center; color:red;'>🔥 D-{days_left} (시험까지 {days_left}일 남음)</h3>", unsafe_allow_html=True)
+elif days_left == 0:
+    st.markdown("<h3 style='text-align:center; color:green;'>🎉 오늘이 시험일입니다! 최선을 다하세요!</h3>", unsafe_allow_html=True)
+else:
+    st.markdown(f"<h3 style='text-align:center; color:gray;'>시험일이 이미 지났습니다 (D+{abs(days_left)})</h3>", unsafe_allow_html=True)
 
-if start_button:
-    st.write("📚 공부 시작!")
-    end_time = time.time() + (study_minutes * 60)
-    last_motivation_time = time.time()
-    current_motivation = random.choice(motivations)
+# -----------------------------
+# 맨 처음 동기부여 메시지 크게 출력
+# -----------------------------
+st.markdown(
+    f"<h2 style='text-align: center; color: blue;'>{st.session_state.current_message}</h2>",
+    unsafe_allow_html=True
+)
 
-    camera = cv2.VideoCapture(0)
-    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+st.title("📚 공부 타이머 & 동기부여")
 
-    placeholder_timer = st.empty()
-    placeholder_focus = st.empty()
-    placeholder_motivation = st.empty()
+# -----------------------------
+# 과목 선택
+# -----------------------------
+subject = st.selectbox("공부할 과목을 선택하세요", ["수학", "영어", "정법", "국어", "한지", "생윤"])
 
-    while time.time() < end_time:
-        ret, frame = camera.read()
-        if not ret:
-            st.error("카메라를 불러올 수 없습니다.")
-            break
+# -----------------------------
+# 타이머 표시 (자동 새로고침)
+# -----------------------------
+st_autorefresh(interval=1000, key="timer_refresh")
 
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+if st.session_state.running:
+    elapsed = time.time() - st.session_state.start_time
+    total_elapsed = st.session_state.elapsed_seconds + elapsed
+    hours = int(total_elapsed // 3600)
+    minutes = int((total_elapsed % 3600) // 60)
+    seconds = int(total_elapsed % 60)
+    st.metric("⏳ 공부 시간", f"{hours:02}:{minutes:02}:{seconds:02}")
 
-        st.session_state.frames_checked += 1
-        if len(faces) > 0:
-            st.session_state.focus_score += 1
+    # 10분마다 동기부여 문구 갱신
+    if int(total_elapsed // 60) % 10 == 0 and int(total_elapsed) > 0:
+        st.session_state.current_message = random.choice(motivation_messages)
+        st.markdown(
+            f"<h2 style='text-align: center; color: blue;'>{st.session_state.current_message}</h2>",
+            unsafe_allow_html=True
+        )
 
-        # 타이머 표시
-        remaining_time = int(end_time - time.time())
-        minutes = remaining_time // 60
-        seconds = remaining_time % 60
-        placeholder_timer.subheader(f"남은 공부 시간: {minutes:02}:{seconds:02}")
+# -----------------------------
+# 시작 / 멈춤 버튼
+# -----------------------------
+col1, col2 = st.columns(2)
 
-        # 집중도 표시
-        focus_percent = (st.session_state.focus_score / st.session_state.frames_checked) * 100
-        placeholder_focus.progress(int(focus_percent))
-        placeholder_focus.write(f"집중도: {focus_percent:.1f}%")
+with col1:
+    if st.button("▶️ 시작"):
+        if not st.session_state.running:
+            st.session_state.start_time = time.time()
+            st.session_state.running = True
 
-        # 10분마다 동기부여 문구 변경
-        if time.time() - last_motivation_time >= 600:  # 600초 = 10분
-            current_motivation = random.choice(motivations)
-            last_motivation_time = time.time()
+with col2:
+    if st.button("⏸️ 멈춤"):
+        if st.session_state.running:
+            elapsed = time.time() - st.session_state.start_time
+            st.session_state.elapsed_seconds += elapsed
+            st.session_state.running = False
 
-        placeholder_motivation.markdown(f"### 💡 {current_motivation}")
+            # 기록 저장
+            date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            st.session_state.records.append(
+                {"날짜": date_str, "과목": subject, "공부시간(초)": int(st.session_state.elapsed_seconds)}
+            )
+            st.session_state.elapsed_seconds = 0
 
-        time.sleep(1)
-
-    camera.release()
-    st.success("⏰ 공부 세션 종료! 이제 휴식 시간입니다.")
-    st.write(f"최종 집중도: {(st.session_state.focus_score / st.session_state.frames_checked) * 100:.1f}%")
-
-    # 휴식 타이머
-    st.write(f"휴식 {break_minutes}분 시작!")
-    time.sleep(break_minutes * 60)
-    st.success("휴식 종료! 다음 공부 세션 시작 가능!")
-
+# -----------------------------
+# 기록 보여주기
+# -----------------------------
+if st.session_state.records:
+    st.subheader("📒 공부 기록")
+    df = pd.DataFrame(st.session_state.records)
+    st.table(df)
