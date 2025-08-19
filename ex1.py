@@ -14,6 +14,8 @@ if "running" not in st.session_state:
     st.session_state.running = False
 if "logs" not in st.session_state:
     st.session_state.logs = []
+if "current_subject" not in st.session_state:
+    st.session_state.current_subject = None
 
 # -------------------------------
 # 동기부여 문구
@@ -44,6 +46,12 @@ st.metric("시험까지 남은 D-Day", f"{days_left}일")
 st.markdown("## ⏱ 공부 타이머")
 
 # -------------------------------
+# 과목 선택
+# -------------------------------
+subjects = ["국어", "영어", "수학", "생활과 윤리", "정치와 법", "한국지리"]
+subject = st.selectbox("공부할 과목을 선택하세요:", subjects)
+
+# -------------------------------
 # 타이머 버튼
 # -------------------------------
 col1, col2 = st.columns(2)
@@ -52,6 +60,7 @@ with col1:
         if not st.session_state.running:
             st.session_state.start_time = time.time()
             st.session_state.running = True
+            st.session_state.current_subject = subject  # 현재 과목 기록
 with col2:
     if st.button("⏸ 멈춤", use_container_width=True):
         if st.session_state.running:
@@ -59,11 +68,16 @@ with col2:
             st.session_state.running = False
             # 로그 저장
             today = datetime.date.today().isoformat()
-            st.session_state.logs.append({"날짜": today, "순공부시간(초)": int(st.session_state.elapsed)})
+            st.session_state.logs.append({
+                "날짜": today,
+                "과목": st.session_state.current_subject,
+                "순공부시간(초)": int(st.session_state.elapsed)
+            })
             st.session_state.elapsed = 0
+            st.session_state.current_subject = None
 
 # -------------------------------
-# 실시간 타이머 (수정된 부분)
+# 실시간 타이머
 # -------------------------------
 timer_placeholder = st.empty()
 motivation_placeholder = st.empty()
@@ -72,7 +86,7 @@ if st.session_state.running:
     while st.session_state.running:
         elapsed = st.session_state.elapsed + (time.time() - st.session_state.start_time)
         h, m, s = int(elapsed // 3600), int((elapsed % 3600) // 60), int(elapsed % 60)
-        timer_placeholder.metric("공부 시간", f"{h:02}:{m:02}:{s:02}")
+        timer_placeholder.metric("공부 시간", f"{h:02}:{m:02}:{s:02} ({st.session_state.current_subject})")
 
         # 10분마다 동기부여 문구 바꾸기
         if int(elapsed) % 600 == 0 and int(elapsed) > 0:
@@ -83,16 +97,18 @@ if st.session_state.running:
 else:
     elapsed = st.session_state.elapsed
     h, m, s = int(elapsed // 3600), int((elapsed % 3600) // 60), int(elapsed % 60)
-    timer_placeholder.metric("공부 시간", f"{h:02}:{m:02}:{s:02}")
+    if st.session_state.current_subject:
+        timer_placeholder.metric("공부 시간", f"{h:02}:{m:02}:{s:02} ({st.session_state.current_subject})")
+    else:
+        timer_placeholder.metric("공부 시간", f"{h:02}:{m:02}:{s:02}")
 
 # -------------------------------
-# 공부 기록 (캘린더 형식)
+# 공부 기록 (과목별 + 일별)
 # -------------------------------
-st.markdown("## 🗓 공부 기록 (일별)")
+st.markdown("## 🗓 공부 기록 (과목별, 일별)")
 if st.session_state.logs:
     df = pd.DataFrame(st.session_state.logs)
-    df = df.groupby("날짜").sum().reset_index()
     df["순공부시간(h)"] = (df["순공부시간(초)"] / 3600).round(2)
-    st.dataframe(df[["날짜", "순공부시간(h)"]], use_container_width=True)
+    st.dataframe(df[["날짜", "과목", "순공부시간(h)"]], use_container_width=True)
 else:
     st.info("아직 공부 기록이 없습니다.")
