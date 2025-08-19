@@ -3,7 +3,6 @@ import pandas as pd
 import time
 import random
 from datetime import datetime, date
-from streamlit_autorefresh import st_autorefresh
 
 st.set_page_config(page_title="공부 타이머 & 동기부여", page_icon="📚", layout="centered")
 
@@ -92,25 +91,10 @@ st.title("📚 공부 타이머 & 동기부여")
 subject = st.selectbox("공부할 과목을 선택하세요", ["수학", "영어", "정법", "국어", "한지", "생윤"])
 
 # -----------------------------
-# 타이머 표시 (자동 새로고침)
+# 타이머 UI (수동 갱신 방식)
 # -----------------------------
-st_autorefresh(interval=1000, key="timer_refresh")
-
-if st.session_state.running:
-    elapsed = time.time() - st.session_state.start_time
-    total_elapsed = st.session_state.elapsed_seconds + elapsed
-    hours = int(total_elapsed // 3600)
-    minutes = int((total_elapsed % 3600) // 60)
-    seconds = int(total_elapsed % 60)
-    st.metric("⏳ 공부 시간", f"{hours:02}:{minutes:02}:{seconds:02}")
-
-    # 10분마다 동기부여 문구 갱신
-    if int(total_elapsed // 60) % 10 == 0 and int(total_elapsed) > 0:
-        st.session_state.current_message = random.choice(motivation_messages)
-        st.markdown(
-            f"<h2 style='text-align: center; color: blue;'>{st.session_state.current_message}</h2>",
-            unsafe_allow_html=True
-        )
+timer_placeholder = st.empty()
+message_placeholder = st.empty()
 
 # -----------------------------
 # 시작 / 멈춤 버튼
@@ -136,6 +120,29 @@ with col2:
                 {"날짜": date_str, "과목": subject, "공부시간(초)": int(st.session_state.elapsed_seconds)}
             )
             st.session_state.elapsed_seconds = 0
+
+# -----------------------------
+# 타이머 동작
+# -----------------------------
+if st.session_state.running:
+    start = st.session_state.start_time
+    while st.session_state.running:
+        elapsed = time.time() - start + st.session_state.elapsed_seconds
+        hours = int(elapsed // 3600)
+        minutes = int((elapsed % 3600) // 60)
+        seconds = int(elapsed % 60)
+        timer_placeholder.metric("⏳ 공부 시간", f"{hours:02}:{minutes:02}:{seconds:02}")
+
+        # 10분마다 동기부여 문구 갱신
+        if int(elapsed // 60) % 10 == 0 and int(elapsed) > 0:
+            st.session_state.current_message = random.choice(motivation_messages)
+            message_placeholder.markdown(
+                f"<h2 style='text-align: center; color: blue;'>{st.session_state.current_message}</h2>",
+                unsafe_allow_html=True
+            )
+
+        time.sleep(1)
+        st.experimental_rerun()
 
 # -----------------------------
 # 기록 보여주기
