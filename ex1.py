@@ -1,7 +1,7 @@
 import streamlit as st
-import time
-import datetime
 import pandas as pd
+import datetime
+import time
 import random
 
 # -------------------------------
@@ -9,114 +9,131 @@ import random
 # -------------------------------
 if "start_time" not in st.session_state:
     st.session_state.start_time = None
-if "elapsed" not in st.session_state:
-    st.session_state.elapsed = 0
 if "running" not in st.session_state:
     st.session_state.running = False
+if "elapsed" not in st.session_state:
+    st.session_state.elapsed = 0
 if "logs" not in st.session_state:
     st.session_state.logs = []
 if "last_motivation" not in st.session_state:
-    st.session_state.last_motivation = ""
+    st.session_state.last_motivation = None
 if "last_motivation_time" not in st.session_state:
-    st.session_state.last_motivation_time = 0
+    st.session_state.last_motivation_time = datetime.datetime.now()
 
 # -------------------------------
-# 동기부여 문구
+# 동기부여 문구 30개
 # -------------------------------
 motivations = [
-    "🔥 지금 이 순간이 미래를 바꾼다!", "🚀 시작이 반이다, 지금 바로 집중하자!",
-    "💡 한 문제 한 문제 쌓이면 큰 힘이 된다.", "🏆 넌 반드시 해낼 수 있어!",
-    "📚 꾸준함이 최고의 무기다.", "✨ 오늘의 땀이 내일의 영광이 된다.",
-    "🌱 작은 성장이 모여 큰 성공을 만든다.", "🕰️ 시간은 기다려주지 않는다. 지금 해라!",
-    "💪 포기하지 말고 끝까지 가자!", "🎯 목표를 향해 한 걸음 더!",
-    "🔥 집중하면 남들과 다른 결과가 나온다.", "🚀 넌 이미 절반은 해냈다.",
-    "💡 오늘의 공부가 내일의 나를 만든다.", "🏆 위대한 일은 작은 습관에서 시작된다.",
-    "📚 눈 앞의 공부가 미래의 길을 연다.", "✨ 네가 하는 노력은 절대 배신하지 않는다.",
-    "🌱 매일 조금씩, 하지만 멈추지 않고.", "🕰️ 지금 공부 안 하면, 나중에 더 힘들다.",
-    "💪 힘들수록 성장하는 순간이다.", "🎯 남들과 비교하지 말고 어제의 나와 경쟁하라.",
-    "🔥 한 문제라도 더 풀자!", "🚀 집중력은 최고의 무기다.",
-    "💡 오늘 외운 것은 내일의 자신감을 만든다.", "🏆 넌 충분히 잘하고 있어, 계속해!",
-    "📚 노력은 배신하지 않는다.", "✨ 천재는 노력하는 사람을 이길 수 없다.",
-    "🌱 오늘의 1시간이 내일의 자유다.", "🕰️ 미루면 미룰수록 늦어진다.",
-    "💪 포기하지 않는 자가 결국 이긴다.", "🎯 지금 하는 공부가 미래를 결정한다."
+    "지금 이 순간이 미래를 만든다!",
+    "작은 노력이 큰 변화를 만든다.",
+    "멈추지 않으면 늦어도 도착한다.",
+    "오늘의 땀이 내일의 성적표다.",
+    "넌 할 수 있다, 이미 절반은 했다!",
+    "어제보다 나은 내가 되자.",
+    "공부는 배신하지 않는다.",
+    "집중하는 1시간이 놀라운 결과를 만든다.",
+    "포기하지 않는 자가 결국 이긴다.",
+    "작심삼일? 삼일마다 다시 시작하면 된다.",
+    "끝까지 버티는 자가 승리한다.",
+    "후회 없는 하루를 보내자.",
+    "너의 가능성은 무한하다.",
+    "오늘의 선택이 내일의 성적을 결정한다.",
+    "한 페이지라도 더 보자.",
+    "작은 습관이 합격을 만든다.",
+    "실패는 성공으로 가는 과정이다.",
+    "남과 비교 말고 어제의 나와 비교하자.",
+    "넌 생각보다 강하다.",
+    "합격은 노력하는 자의 것.",
+    "미래의 너가 오늘의 너에게 감사할 것이다.",
+    "오늘 할 일을 내일로 미루지 말자.",
+    "공부는 재능보다 끈기다.",
+    "시간은 칼이다, 현명하게 써라.",
+    "버티는 자가 결국 웃는다.",
+    "노력은 배신하지 않는다.",
+    "오늘을 이겨내자.",
+    "꾸준함이 가장 큰 무기다.",
+    "10분 더! 그게 합격을 만든다.",
+    "포기하지 않는 한 실패는 없다."
 ]
 
 # -------------------------------
-# 타이머 함수
+# 타이머 표시 및 동기부여 문구
 # -------------------------------
-def start_timer():
-    if not st.session_state.running:
-        st.session_state.start_time = time.time() - st.session_state.elapsed
-        st.session_state.running = True
+st.markdown("## ⏳ 공부 타이머")
 
-def stop_timer(subject):
-    if st.session_state.running:
-        st.session_state.running = False
-        st.session_state.elapsed = time.time() - st.session_state.start_time
-        today = datetime.date.today().strftime("%Y-%m-%d")
-        st.session_state.logs.append({
-            "날짜": today,
-            "과목": subject,
-            "순공부시간(초)": round(st.session_state.elapsed)
-        })
-
-def reset_timer():
-    st.session_state.start_time = None
-    st.session_state.elapsed = 0
-    st.session_state.running = False
-
-# -------------------------------
-# 자동 새로고침 (1초마다 갱신)
-# -------------------------------
-st_autorefresh = st.experimental_rerun  # 최신 streamlit에서 autorefresh 없는 경우 대체
-st_autorefresh_interval = 1000  # 1초
-
-# -------------------------------
-# UI 구성
-# -------------------------------
-
-# 👉 맨 위에 동기부여 문구 (10분마다 갱신)
-elapsed_time = int(st.session_state.elapsed if not st.session_state.running else time.time() - st.session_state.start_time)
-if elapsed_time // 600 > st.session_state.last_motivation_time:
+# 동기부여 문구 10분마다 갱신
+now = datetime.datetime.now()
+if (now - st.session_state.last_motivation_time).seconds >= 600:
     st.session_state.last_motivation = random.choice(motivations)
-    st.session_state.last_motivation_time = elapsed_time // 600
-st.markdown(f"# {st.session_state.last_motivation if st.session_state.last_motivation else random.choice(motivations)}")
+    st.session_state.last_motivation_time = now
 
-# 시험 D-day
-exam_date = st.date_input("시험 날짜")
-days_left = (exam_date - datetime.date.today()).days
-if days_left >= 0:
-    st.write(f"📌 D-{days_left}")
-else:
-    st.write("시험이 이미 지났습니다.")
+if st.session_state.last_motivation is None:
+    st.session_state.last_motivation = random.choice(motivations)
 
+st.markdown(f"### 💡 {st.session_state.last_motivation}")
+
+# -------------------------------
 # 과목 선택
-subject = st.selectbox("과목 선택", ["국어", "영어", "수학", "생활과 윤리", "정치와 법", "한국지리"])
+# -------------------------------
+subject = st.selectbox("📚 오늘 공부할 과목을 선택하세요", ["국어", "영어", "수학", "생활과 윤리", "정치와 법", "한국지리"])
 
-# 타이머
-if st.session_state.running:
-    st.session_state.elapsed = time.time() - st.session_state.start_time
-elapsed_time = int(st.session_state.elapsed)
-hours, remainder = divmod(elapsed_time, 3600)
-minutes, seconds = divmod(remainder, 60)
-st.metric("공부 시간", f"{hours:02}:{minutes:02}:{seconds:02}")
+# -------------------------------
+# 타이머 버튼
+# -------------------------------
+col1, col2 = st.columns(2)
 
-# 버튼
-col1, col2, col3 = st.columns(3)
 with col1:
-    if st.button("▶ 시작"):
-        start_timer()
-with col2:
-    if st.button("⏸ 멈춤"):
-        stop_timer(subject)
-with col3:
-    if st.button("🔄 리셋"):
-        reset_timer()
+    if st.button("▶️ 시작", use_container_width=True):
+        if not st.session_state.running:
+            st.session_state.start_time = datetime.datetime.now()
+            st.session_state.running = True
 
-# 공부 기록
+with col2:
+    if st.button("⏹ 멈춤", use_container_width=True):
+        if st.session_state.running:
+            st.session_state.elapsed += (datetime.datetime.now() - st.session_state.start_time).seconds
+            st.session_state.running = False
+            # 공부 기록 저장
+            today = datetime.date.today().strftime("%Y-%m-%d")
+            total_hours = round(st.session_state.elapsed / 3600, 2)
+            st.session_state.logs.append({"날짜": today, "과목": subject, "순공부시간(h)": total_hours})
+            st.success(f"✅ {today} {subject} {total_hours}시간 기록 저장!")
+
+# -------------------------------
+# 실시간 타이머 업데이트
+# -------------------------------
+if st.session_state.running:
+    elapsed = st.session_state.elapsed + (datetime.datetime.now() - st.session_state.start_time).seconds
+else:
+    elapsed = st.session_state.elapsed
+
+hours, remainder = divmod(elapsed, 3600)
+minutes, seconds = divmod(remainder, 60)
+st.markdown(f"### ⏱ {hours:02d}:{minutes:02d}:{seconds:02d}")
+
+# -------------------------------
+# 공부 기록 (DataFrame)
+# -------------------------------
 if st.session_state.logs:
     df = pd.DataFrame(st.session_state.logs)
-    if "순공부시간(초)" in df.columns and "순공부시간(h)" not in df.columns:
-        df["순공부시간(h)"] = (df["순공부시간(초)"] / 3600).round(2)
-    show_cols = [c for c in ["날짜", "과목", "순공부시간(h)"] if c in df.columns]
-    st.dataframe(df[show_cols], use_container_width=True)
+    st.dataframe(df, use_container_width=True)
+
+# -------------------------------
+# D-Day 설정
+# -------------------------------
+st.markdown("---")
+exam_date = st.date_input("📅 시험 날짜를 선택하세요", datetime.date(2025, 11, 13))
+d_day = (exam_date - datetime.date.today()).days
+if d_day > 0:
+    st.markdown(f"### 🚀 D-{d_day}")
+elif d_day == 0:
+    st.markdown("### 🚀 오늘이 시험일입니다! 파이팅!!")
+else:
+    st.markdown(f"### 🚀 시험이 끝난 지 {abs(d_day)}일 지났습니다.")
+    
+# -------------------------------
+# 자동 새로고침 (실시간 타이머처럼 동작)
+# -------------------------------
+if st.session_state.running:
+    time.sleep(1)
+    st.experimental_rerun()
