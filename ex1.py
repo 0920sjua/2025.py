@@ -3,6 +3,7 @@ import time
 import random
 import pandas as pd
 from datetime import datetime, date
+import threading
 
 # -------------------------------
 # 세션 상태 초기화
@@ -62,8 +63,11 @@ selected_subject = st.selectbox("📘 오늘 공부할 교재를 선택하세요
 # -------------------------------
 # 자동 새로고침 (1초마다)
 # -------------------------------
-st_autorefresh = st.experimental_rerun if False else None  # dummy 방지
-count = st.autorefresh(interval=1000, limit=None, key="timer_refresh")
+def refresh():
+    time.sleep(1)
+    st.rerun()
+
+threading.Thread(target=refresh).start()
 
 # -------------------------------
 # 타이머 동작
