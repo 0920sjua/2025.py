@@ -2,7 +2,6 @@ import streamlit as st
 import datetime
 import pandas as pd
 import random
-from streamlit_autorefresh import st_autorefresh
 
 # -------------------------------
 # 초기 세션 상태 설정
@@ -76,10 +75,8 @@ st.markdown(f"📅 수능까지 D-{d_day}")
 subject = st.selectbox("공부 과목 선택", ["국어", "영어", "수학", "생활과 윤리", "정치와 법", "한국지리"])
 
 # -------------------------------
-# 실시간 타이머 (자동 새로고침)
+# 타이머 구현 (실시간)
 # -------------------------------
-st_autorefresh(interval=1000, key="timer_refresh")  # 1초마다 새로고침
-
 if st.button("▶ 시작", key="start"):
     if not st.session_state.running:
         st.session_state.start_time = datetime.datetime.now()
@@ -101,7 +98,7 @@ minutes, seconds = divmod(remainder, 60)
 st.markdown(f"### ⏱ {hours:02d}:{minutes:02d}:{seconds:02d}")
 
 # -------------------------------
-# 기록 버튼 (작게 만들기)
+# 기록 버튼
 # -------------------------------
 if st.button("💾 오늘 공부 기록 저장", key="save_record"):
     st.session_state.records.append({
@@ -113,7 +110,7 @@ if st.button("💾 오늘 공부 기록 저장", key="save_record"):
     st.session_state.running = False
 
 # -------------------------------
-# 기록 표시 (캘린더형 테이블)
+# 기록 표시
 # -------------------------------
 if st.session_state.records:
     df = pd.DataFrame(st.session_state.records)
