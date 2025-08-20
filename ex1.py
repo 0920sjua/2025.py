@@ -17,27 +17,21 @@ if "last_motivation" not in st.session_state:
     st.session_state.last_motivation = ""
 if "last_motivation_time" not in st.session_state:
     st.session_state.last_motivation_time = time.time()
+if "background" not in st.session_state:
+    st.session_state.background = "흰색"
 if "subject" not in st.session_state:
-    st.session_state.subject = None
+    st.session_state.subject = None  # 처음 과목 선택용
 
 # ---------------- 동기부여 문구 ----------------
-motivations = {
-    "국어": [
-        "글쓰기는 사고를 명료하게 한다. - 윌리엄 제임스",
-        "독서는 마음의 양식이다. - 프랜시스 베이컨"
-    ],
-    "영어": [
-        "미래는 자신의 꿈을 믿는 자의 것이다. - 엘리너 루즈벨트",
-        "끝내기 전까지는 항상 불가능해 보인다. - 넬슨 만델라"
-    ],
-    "수학": [
-        "수학은 문제 해결의 힘을 길러준다. - 피타고라스",
-        "패턴을 이해하면 세상이 명확해진다. - 아르키메데스"
-    ]
-    # 필요 시 다른 과목 추가
-}
+motivations_list = [
+    "열심히 하면 반드시 보답이 온다.",
+    "작은 성취가 큰 변화를 만든다.",
+    "포기하지 말고 계속 나아가라.",
+    "시간은 가장 소중한 자산이다.",
+    "오늘의 노력은 내일의 힘이 된다."
+]
 
-# ---------------- 배경 설정 ----------------
+# ---------------- 배경화면 설정 ----------------
 backgrounds = {
     "흰색": "white",
     "빨강": "red",
@@ -57,42 +51,39 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- 시험 날짜 (D-Day) ----------------
+# ---------------- D-Day 설정 ----------------
 target_date = st.sidebar.date_input("시험 날짜 선택", date(2025, 11, 15))
 days_left = (target_date - date.today()).days
 st.sidebar.markdown(f"📅 시험까지 **{days_left}일 남음**")
 
 # ---------------- 과목 선택 ----------------
 if st.session_state.subject is None:
-    st.session_state.subject = st.selectbox("공부할 과목 선택", list(motivations.keys()))
+    st.session_state.subject = st.selectbox(
+        "공부할 과목 선택", 
+        ["국어", "영어", "수학", "생활과 윤리", "정치와 법", "한국지리"]
+    )
 
-# ---------------- 플레이스홀더 ----------------
-timer_placeholder = st.empty()
-motivation_placeholder = st.empty()
-record_placeholder = st.empty()
+# ---------------- 실시간 타이머 ----------------
+if st.session_state.running:
+    elapsed = int(time.time() - st.session_state.start_time + st.session_state.elapsed)
+else:
+    elapsed = st.session_state.elapsed
 
-# ---------------- 동기부여 업데이트 ----------------
-def update_motivation():
-    if time.time() - st.session_state.last_motivation_time > 600 or st.session_state.last_motivation == "":
-        st.session_state.last_motivation = random.choice(motivations[st.session_state.subject])
-        st.session_state.last_motivation_time = time.time()
-    motivation_placeholder.markdown(f"## 💡 {st.session_state.last_motivation}")
+hours, remainder = divmod(elapsed, 3600)
+minutes, seconds = divmod(remainder, 60)
 
-# ---------------- 타이머 업데이트 ----------------
-def update_timer():
-    if st.session_state.running and st.session_state.start_time:
-        elapsed = int(time.time() - st.session_state.start_time + st.session_state.elapsed)
-    else:
-        elapsed = st.session_state.elapsed
-    hours, remainder = divmod(elapsed, 3600)
-    minutes, seconds = divmod(remainder, 60)
-    timer_placeholder.markdown(f"# ⏱️ {hours:02d}:{minutes:02d}:{seconds:02d}")
+# ---------------- 동기부여 문구 (10분마다 변경) ----------------
+if time.time() - st.session_state.last_motivation_time > 600 or st.session_state.last_motivation == "":
+    st.session_state.last_motivation = random.choice(motivations_list)
+    st.session_state.last_motivation_time = time.time()
 
-update_motivation()
-update_timer()
+st.markdown(f"## 💡 {st.session_state.last_motivation}")
 
-# ---------------- 버튼 ----------------
-col1, col2, col3 = st.columns(3)
+# ---------------- 타이머 표시 ----------------
+st.markdown(f"# ⏱️ {hours:02d}:{minutes:02d}:{seconds:02d}")
+
+# ---------------- 버튼 컨트롤 ----------------
+col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     if st.button("▶ 시작"):
@@ -107,30 +98,30 @@ with col2:
             st.session_state.running = False
 
 with col3:
-    if st.button("💾 기록"):
-        elapsed_time = st.session_state.elapsed
-        st.session_state.records.append({
-            "날짜": date.today().strftime("%Y-%m-%d"),
-            "과목": st.session_state.subject,
-            "순공부시간(h)": round(elapsed_time / 3600, 2)
-        })
-        # 기록 후 타이머 초기화
+    if st.button("⏹ 리셋"):
         st.session_state.start_time = None
         st.session_state.elapsed = 0
         st.session_state.running = False
-        # 기록 바로 표시
-        if st.session_state.records:
-            df = pd.DataFrame(st.session_state.records)
-            record_placeholder.dataframe(df, use_container_width=True)
+
+with col4:
+    if st.button("💾 기록"):
+        record_date = st.date_input("기록할 날짜 선택", date.today())
+        elapsed_time = st.session_state.elapsed
+        st.session_state.records.append({
+            "날짜": record_date.strftime("%Y-%m-%d"),
+            "과목": st.session_state.subject,
+            "순공부시간(h)": round(elapsed_time / 3600, 2)
+        })
+        st.session_state.start_time = None
+        st.session_state.elapsed = 0
+        st.session_state.running = False
 
 # ---------------- 기록 표시 ----------------
 if st.session_state.records:
     df = pd.DataFrame(st.session_state.records)
-    record_placeholder.dataframe(df, use_container_width=True)
+    st.dataframe(df, use_container_width=True)
 
-# ---------------- 실시간 업데이트 ----------------
+# ---------------- 자동 새로고침 (실시간 타이머 효과) ----------------
 if st.session_state.running:
-    while st.session_state.running:
-        update_timer()
-        update_motivation()
-        time.sleep(1)
+    time.sleep(1)
+    st.experimental_rerun()
