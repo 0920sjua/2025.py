@@ -213,6 +213,13 @@ motivations = {
         "공간 사고는 세상을 보는 힘이다. - 지리학자30"
     ]
 }
+# ---------------- 동기부여 문구 (10분마다 변경) ----------------
+if time.time() - st.session_state.last_motivation_time > 600:
+    # 사용자가 선택한 과목(subject)에 맞는 메시지에서 랜덤 선택
+    st.session_state.last_motivation = random.choice(motivations[subject])
+    st.session_state.last_motivation_time = time.time()
+
+st.markdown(f"## 💡 {st.session_state.last_motivation}")
 
 
 # ---------------- 배경화면 설정 ----------------
