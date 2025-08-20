@@ -63,7 +63,7 @@ if st.session_state.subject is None:
         ["국어", "영어", "수학", "생활과 윤리", "정치와 법", "한국지리"]
     )
 
-# ---------------- 실시간 타이머 ----------------
+# ---------------- 타이머 계산 ----------------
 if st.session_state.running:
     elapsed = int(time.time() - st.session_state.start_time + st.session_state.elapsed)
 else:
@@ -72,14 +72,12 @@ else:
 hours, remainder = divmod(elapsed, 3600)
 minutes, seconds = divmod(remainder, 60)
 
-# ---------------- 동기부여 문구 (10분마다 변경) ----------------
+# ---------------- 동기부여 문구 갱신 ----------------
 if time.time() - st.session_state.last_motivation_time > 600 or st.session_state.last_motivation == "":
     st.session_state.last_motivation = random.choice(motivations_list)
     st.session_state.last_motivation_time = time.time()
 
 st.markdown(f"## 💡 {st.session_state.last_motivation}")
-
-# ---------------- 타이머 표시 ----------------
 st.markdown(f"# ⏱️ {hours:02d}:{minutes:02d}:{seconds:02d}")
 
 # ---------------- 버튼 컨트롤 ----------------
@@ -106,11 +104,10 @@ with col3:
 with col4:
     if st.button("💾 기록"):
         record_date = st.date_input("기록할 날짜 선택", date.today())
-        elapsed_time = st.session_state.elapsed
         st.session_state.records.append({
             "날짜": record_date.strftime("%Y-%m-%d"),
             "과목": st.session_state.subject,
-            "순공부시간(h)": round(elapsed_time / 3600, 2)
+            "순공부시간(h)": round(elapsed / 3600, 2)
         })
         st.session_state.start_time = None
         st.session_state.elapsed = 0
@@ -121,7 +118,7 @@ if st.session_state.records:
     df = pd.DataFrame(st.session_state.records)
     st.dataframe(df, use_container_width=True)
 
-# ---------------- 자동 새로고침 (실시간 타이머 효과) ----------------
+# ---------------- 자동 새로고침 (실시간 타이머) ----------------
+from streamlit_autorefresh import st_autorefresh
 if st.session_state.running:
-    time.sleep(1)
-    st.experimental_rerun()
+    st_autorefresh(interval=1000, key="timer")  # 1초마다 안전하게 새로고침
